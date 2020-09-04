@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html style="height:100%">
+<head>
+    <meta charset='utf-8' />
+    <title>GPS Points Visualization</title>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+	<script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+	<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+	<script src="https://cdn.bootcss.com/echarts/4.1.0.rc2/echarts.min.js"></script>
+	<link href='https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css' rel='stylesheet' />
+    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.47.0/mapbox-gl.js'></script>
+    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.47.0/mapbox-gl.css' rel='stylesheet' />
+	<script src='checkins_manhattan.js'></script>
+	<script src='taxi_manhattan.js'></script>
+	<script src='function.js'></script>
+	<script src="https://npmcdn.com/@turf/turf@5.1.6/turf.min.js"></script>
+	<script src='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v2.3.0/mapbox-gl-geocoder.min.js'></script>
+	<link rel='stylesheet' href='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v2.3.0/mapbox-gl-geocoder.css' type='text/css' />
+    <style>
+        body{ margin:0; padding:0;height:100%;}
+		#title{padding:0.5%;height:3%;boder:solid 0.5% #fcc;background-color:#363636;text-align:center;display:-webkit-box;-webkit-box-pack:center;-webkit-box-align:center;}
+		#map{position:relative;float:right;width:85%;height:95%;border:solid 5px #D3D3D3;text-align:left;box-sizing: border-box;}
+        #input_module{position:relative;float:left;width:15%;height:30%;border:solid 5px #D3D3D3;box-sizing: border-box;}
+		#distance_module{position:relative;float:left;width:15%;height:35%;border:solid 5px #D3D3D3;box-sizing: border-box;}
+		#heatmap_module{position:relative;float:left;width:15%;height:30%;border:solid 5px #D3D3D3;box-sizing: border-box;}
+		#info_latlng{position:absolute;z-index:999; top:4%; right:2%; width:260px; height: 4.5%; background:url(bg.jpg); font-family: monospace; border-radius: 3px;font-weight: bold}
+		#heatmap_legend_gps{position:absolute;z-index:999; bottom:1%; left:10px; width:450px; font-size:17px; height: 5.5%; background-color:#FFFFFF; font-family: monospace; border-radius: 3px;font-weight: bold;display:none}
+		
+    </style>
+</head>			
+			
+<body>
+<style>
+    .mapboxgl-popup {
+        max-width: 400px;
+        font: 14px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+    }
+	*{margin:0;padding:0;}
+    .loading{
+          width:75%;height:95%;position:fixed;background:rgba(255,255,255,0.6);z-index:999;
+    }
+    .loading >p{position:absolute;left:0;right:0;top:0;bottom:0;margin:auto;height:30px;width:120px;}
+    .loading >p i{display: block;float:left;margin:0 5px; width:5px;height:30px;background:#f00;transform:scaleY(0.3);
+                   animation:loading 1s ease infinite alternate;
+    }
+.loading >p i:nth-child(2){animation-delay:0.1s;}
+.loading >p i:nth-child(3){animation-delay:0.2s;}
+.loading >p i:nth-child(4){animation-delay:0.3s;}
+.loading >p i:nth-child(5){animation-delay:0.4s;}
+    @keyframes loading{
+           0,40%,100%{transform:scaleY(0.3);}
+           20%{transform:scaleY(1);}
+    }
+	.session {
+	  margin: 10px;
+	}
+
+	.row {
+	  height: 12px;
+	  width: 100%;
+	}
+
+	.colors {
+	  background: linear-gradient(to left, rgba(33,102,172,0), rgb(103,169,207), rgb(209,229,240), rgb(253,219,199), rgb(239,138,98), rgb(178,24,43));
+	  margin-bottom: 5px;
+	}
+
+	.label {
+	  width: 16%;
+	  display: inline-block;
+	  text-align: left;
+	}
+	.distance-container {
+		position: absolute; 
+		top:4%; 
+		right:40%; 
+		z-index: 999;
+		}
+ 
+	.distance-container > * {
+		background-color: rgba(0, 0, 0, 0.5);
+		color: #fff;
+		font-size: 13px;
+		line-height: 20px;
+		display: block;
+		margin: 0;
+		padding: 5px 10px;
+		border-radius: 3px;
+		}
+	.textarea{
+            position:absolute;background:none;z-index:9
+            }
+	.note{
+		position:absolute;line-height:20px;padding:3px 5px;
+		}
+	
+</style>
+<div id='title' >
+	<label class="title" style='font-size:20px;color:white;font-weight:bold;'>GPS点可视化工具</label>
+</div>
+<div id='map' >	
+		<div id="info_latlng" >
+			<span style="position:relative; top:23%; left:5%; font-size: 16px;">lng,lat: </span>
+			<span id="latlng" style="position: absolute; top:23%; left:33%; font-size: 16px;"></span>
+		</div>
+		<div id="distance" class="distance-container"></div>
+		<div class="loading" style="display:none;">
+			 <p>
+			  <i></i>
+			  <i></i>
+			  <i></i>
+			  <i></i>
+			  <i></i>
+			</p>
+		</div>
+		<div id="heatmap_legend_gps" >
+			<div class='session'>
+			  <div class='row colors'>
+			  </div>
+			  <div class='row labels'>
+				<div class='label'><text id="legend5">5</text></div>
+				<div class='label'><text id="legend4">4</text></div>
+				<div class='label'><text id="legend3">3</text></div>
+				<div class='label'><text id="legend2">2</text></div>
+				<div class='label'><text id="legend1">1</text></div>
+				<div class='label'><text id="legend0">0</text></div>
+				
+			  </div>
+			</div>
+		</div>
+		
+</div>
+
+<div id='input_module'>
+	<div style="position:relative;float:left;width:100%;padding:1% 0 1% 0;font-size:16px;background-color:#EEE9E9;">
+		<label><b>&nbsp;GPS点输入(WGS48)&nbsp;&nbsp;</b></label>
+	</div>
+	<p>&nbsp;经度，纬度:</p>
+
+	<div class='text_input' style="position:absolute;top:15%;left:20%;height:50%;margin:17px 0 0 0">
+		<textarea class = "textarea" id="input_points" rows="10" cols="20"  onfocus="document.getElementById('note').style.display='none'" onblur="if(value=='')document.getElementById('note').style.display='block'"> </textarea> 
+		<div id="note" class="note">
+            <font color="#777">106.4653,29.5676</font>
+			<br><font color="#777">106.4558,29.5701</font>
+			<br><font color="#777">106.2957,29.5937</font>
+			<br><font color="#777">...</font>
+        </div>
+	</div>
+	<div class='control' style="position:absolute;top:82%;left:20%;width:80%;font-size:16px;">
+		<div><button type="button" id='button_point_show' style="width:30%;background-color:#778899;color:#FFFAFA;">显示</button>&nbsp;&nbsp;<button type="button" id='button_point_hide' style="width:30%;background-color:#778899;color:#FFFAFA">隐藏</button></div>
+		
+	</div>
+</div>
+</div>
+<div id='heatmap_module'>		
+	<div class='control_trip' style="position:relative;float:left;width:100%;padding:1% 0 1% 0;font-size:16px;background-color:#EEE9E9;">
+		<label><b>&nbsp;热力图&nbsp;</b> （请先输入GPS点）</label>
+	</div>
+	<div class='show_checkins' style="position:absolute;left:20%;top:12%;height:90%;padding:2% 0 0 0;width:100%;">		
+		<div class='control' style="position:relative;float:left;width:90%;font-size:16px;padding:3% 0 0 2%;" >			
+			最“热”点数:&nbsp;&nbsp;<input type="text" style="width:20%" id="GPS_count" value="5">
+		</div>
+		</br>
+		<div class='control' style="position:absolute;top:25%;width:80%;font-size:16px;" >
+			<div class='control_radius'  style="padding:0 0 0 3%;">
+				<label for='heatmap_radius'>集合半径:&nbsp;&nbsp;&nbsp;&nbsp;</label><u><span id='span_heatmap_radius'>37</span></u>&nbsp;&nbsp;&nbsp;		
+				<input id="heatmap_radius"  type="range" value="37"  min="0" max="100" step="1"  />&nbsp;
+			</div>
+			<div class='control_opacity' style="padding:1% 0 0 3%;">
+				<label for='heatmap_opacity'>不透明度:&nbsp;&nbsp;</label><u><span id='span_heatmap_opacity'>83</span>%</u>&nbsp;			
+				<input id="heatmap_opacity"  type="range" value="83"  min="0" max="100" step="1"  />&nbsp;</font>
+			</div>
+		</div>
+		</br>
+		<div class='control' style="position:absolute;top:70%;width:80%;font-size:16px;">
+			<div><button type="button" id='button_heatmap_gps_show' style="width:30%;background-color:#778899;color:#FFFAFA;">显示</button>&nbsp;&nbsp;<button type="button" id='button_heatmap_gps_hide' style="width:30%;background-color:#778899;color:#FFFAFA">隐藏</button></div>
+
+		</div>
+	</div>
+
+</div>
+
+  
+<div id='distance_module' >
+
+	<div style="position:absolute;float:left;width:100%;padding:1% 0 1% 0;font-size:16px;background-color:#EEE9E9;">
+		<label ><b>&nbsp;测距&nbsp;&nbsp;</b></label >
+		<input id='distance_measure' type="checkbox" name='dis-checkbox' value='dis' onclick="distance_menu()">
+	</div>
+	
+</div>
+
+</body>
+
+<script>
+
+//展示地图			
+mapboxgl.accessToken = 'pk.eyJ1IjoibGN3IiwiYSI6ImNqa2h4c2kwZDB3YnYzcXBqM2V6ZWc4ODUifQ.pFm59Mjq4yC9fBAHE3XLpQ';
+var map = new mapboxgl.Map({
+	container: 'map', // container id
+	
+	style: 'mapbox://styles/mapbox/streets-v9',
+	center: [105, 34], // starting position
+	zoom: 3 // starting zoom
+});
+
+map.addControl(new MapboxGeocoder({
+    accessToken: mapboxgl.accessToken
+}),'top-left');
+//路线规划控件
+//map.addControl(new MapboxDirections({
+//    accessToken: mapboxgl.accessToken
+//}), 'top-right');
+// Add zoom and rotation controls to the map.
+map.addControl(new mapboxgl.NavigationControl(),'bottom-right');
+//气泡控件
+var popup = new mapboxgl.Popup({
+        closeButton: false,
+        closeOnClick: false
+    });
+var GPS_count = $('#CN_NAME').val();
+//载入图片来显示自己
+map.on('load',function(){
+	map.loadImage('https://liaochengwu.github.io/test/images/bdsc.jpg', function(error, image) {
+	if (error) throw error;
+	map.addImage('bdsc',image);});
+	map.addSource('point', {
+				'type': 'geojson',
+				'data': {
+				'type': 'FeatureCollection',
+				'features': [
+						{
+						'type': 'Feature',
+						'geometry': {
+							'type': 'Point',
+							'coordinates': [106.4653, 29.5685]
+						}}
+				]
+				}
+		});
+	map.addLayer({
+		'id': 'bdsc_layer',
+		'type': 'symbol',
+		'source': 'point',
+		'layout': {
+			'icon-image': 'bdsc',
+			"icon-size": [
+				"interpolate",
+				["linear"],
+				["zoom"],
+					12, 0.05, //0.15
+					18, 0.5
+			]
+			}
+	});
+	map.on('click', 'bdsc_layer' , function (e) {
+		var coordinates = e.features[0].geometry.coordinates.slice();
+		var description = "<h3><strong>hello</strong></h3><h4><p>双击隐藏图片</p></h4>";
+		while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+		coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+		}
+		 
+		
+		popup.setLngLat(coordinates)
+			.setHTML(description)
+			.addTo(map);
+	});
+	map.on('dblclick', 'bdsc_layer' , function (e) {
+		map.setLayoutProperty('bdsc_layer', 'visibility', 'none');
+		popup.remove();
+	});
+
+	//map.on('click', 'bdsc_layer', function() {
+	//	map.getCanvas().style.cursor = '';
+	//	popup.remove();
+	//});
+	// Change the cursor to a pointer when the mouse is over the places layer.
+	map.on('mouseenter', 'bdsc_layer', function() {
+	map.getCanvas().style.cursor = 'pointer';
+	});
+	 
+	// Change it back to a pointer when it leaves.
+	map.on('mouseleave', 'bdsc_layer', function() {
+	map.getCanvas().style.cursor = '';
+	});
+});
+//Infomations of mouse position
+map.on('mousemove', function (e){
+	lat = e.lngLat.lat;
+	lng = e.lngLat.lng;
+	$('#latlng').text(lng.toFixed(4) + ', ' + lat.toFixed(4));
+	
+	if($('#distance_measure').is(':checked')){
+		var features = map.queryRenderedFeatures(e.point, {
+			layers: ['measure-points']
+		});
+		// UI indicator for clicking/hovering a point on the map
+		map.getCanvas().style.cursor = features.length
+			? 'pointer'
+			: 'crosshair';
+	}
+	
+});	
+
+var distanceContainer = document.getElementById('distance');
+
+// GeoJSON object to hold our measurement features
+var geojson = {
+			'type': 'FeatureCollection',
+			'features': []
+		};
+
+// Used to draw a line between points
+var linestring = {
+	'type': 'Feature',
+	'geometry': {
+		'type': 'LineString',
+		'coordinates': []
+	}
+};
+//测距
+map.on('load', function() {
+	map.addSource('geojson', {
+		'type': 'geojson',
+		'data': geojson
+	});
+
+	map.addLayer({
+		id: 'measure-points',
+		type: 'circle',
+		source: 'geojson',
+		paint: {
+			'circle-radius': 5,
+			'circle-color': '#000'
+		},
+		filter: ['in', '$type', 'Point']
+	});
+	map.addLayer({
+		id: 'measure-lines',
+		type: 'line',
+		source: 'geojson',
+		layout: {
+			'line-cap': 'round',
+			'line-join': 'round'
+		},
+		paint: {
+			'line-color': '#000',
+			'line-width': 2.5
+		},
+		filter: ['in', '$type', 'LineString']
+	});
+});
+//单击产生测距点
+map.on('click', function(e) {
+if($('#distance_measure').is(':checked')){
+	map.setLayoutProperty('measure-points', 'visibility', 'visible');
+	map.setLayoutProperty('measure-lines', 'visibility', 'visible');
+	$('#distance').show();
+	var features = map.queryRenderedFeatures(e.point, {
+		layers: ['measure-points']
+	});
+
+	// Remove the linestring from the group
+	// So we can redraw it based on the points collection
+	if (geojson.features.length > 1) geojson.features.pop();
+
+	// Clear the Distance container to populate it with a new value
+	distanceContainer.innerHTML = '';
+
+	// If a feature was clicked, remove it from the map
+	if (features.length) {
+		var id = features[0].properties.id;
+		geojson.features = geojson.features.filter(function(point) {
+			return point.properties.id !== id;
+		});
+	} else {
+		var point = {
+			'type': 'Feature',
+			'geometry': {
+				'type': 'Point',
+				'coordinates': [e.lngLat.lng, e.lngLat.lat]
+			},
+			'properties': {
+				'id': String(new Date().getTime())
+			}
+		};
+
+		geojson.features.push(point);
+	}
+
+	if (geojson.features.length > 1) {
+		linestring.geometry.coordinates = geojson.features.map(function(
+			point
+		) {
+			return point.geometry.coordinates;
+		});
+
+		geojson.features.push(linestring);
+
+		// Populate the distanceContainer with total distance
+		var value = document.createElement('pre');
+		value.textContent =
+			'Total distance: ' +
+			turf.length(linestring).toLocaleString() +
+			'km';
+		distanceContainer.appendChild(value);
+	}
+
+	map.getSource('geojson').setData(geojson);
+}
+});
+/////////////////////////////////////////////////增加layer : GPS points
+// map显示GPS点
+var points_geojson = null;
+map.on('load',function(){
+	map.addSource("GPS_data",{
+		'type':'geojson',
+		'data': points_geojson
+	});
+	map.addLayer({
+		"id": "GPS_points_layer",
+		"type": "symbol",
+		"source": "GPS_data",
+		"layout": {
+			"visibility": 'visible',
+			"icon-image": "circle-15",
+			"icon-size": [
+				"interpolate",
+				["linear"],
+				["zoom"],
+					12, 0.15, //0.15
+					20, 2
+			],
+			"icon-allow-overlap": true
+		}
+	});
+});
+
+
+////////////////////////////////////////////////////////////////////////////////////
+
+
+//alert(features[0].properties.is_nonWorkday);
+var geojson_head = "{\"type\": \"FeatureCollection\",\"features\": [";
+var geojson_tail = "]}";
+var geojson_body = "";
+
+//响应按钮
+$(document).ready(function(){
+	$("#button_point_show").click(function(){
+		//GPS点数据转化成geojson
+		var points_text = $("#input_points").val(); 
+		points_text = points_text.split("\n");
+
+		var point_lnglat = null;
+		for(var i = 0 ; i < points_text.length ; i ++){
+		    point_lnglat = points_text[i].split(",");
+			geojson_body = geojson_body + "{ \"type\": \"Feature\", \"geometry\": { \"type\": \"Point\", \"coordinates\": [ " + point_lnglat[0] + "," + point_lnglat[1] + "] } },"
+		}
+		map.flyTo({
+			center: [parseFloat(point_lnglat[0]), parseFloat(point_lnglat[1])],
+			zoom: 13
+		});
+		var points_geojson_str = geojson_head + geojson_body.substr(0, geojson_body.length - 1) + geojson_tail;
+		points_geojson = JSON.parse(points_geojson_str); 
+		
+		//更新source
+		map.getSource('GPS_data').setData(points_geojson);
+		map.setLayoutProperty('GPS_points_layer', 'visibility', 'visible');
+	});
+	$("#button_point_hide").click(function(){
+		map.setLayoutProperty('GPS_points_layer', 'visibility', 'none');
+	});
+	//heatmap_checkins
+	$("#button_heatmap_gps_show").click(function(){
+		if (!points_geojson){
+			//GPS点数据转化成geojson
+			var points_text = $("#input_points").val(); 
+			points_text = points_text.split("\n");
+
+			var point_lnglat = null;
+			for(var i = 0 ; i < points_text.length ; i ++){
+				point_lnglat = points_text[i].split(",");
+				geojson_body = geojson_body + "{ \"type\": \"Feature\", \"geometry\": { \"type\": \"Point\", \"coordinates\": [ " + point_lnglat[0] + "," + point_lnglat[1] + "] } },"
+			}
+			map.flyTo({
+				center: [parseFloat(point_lnglat[0]), parseFloat(point_lnglat[1])],
+				zoom: 13
+			});
+			var points_geojson_str = geojson_head + geojson_body.substr(0, geojson_body.length - 1) + geojson_tail;
+			points_geojson = JSON.parse(points_geojson_str); 
+		}
+		//更新source
+		map.getSource('GPS_data_for_heatmap').setData(points_geojson);
+		map.setLayoutProperty('GPS_points_layer', 'visibility', 'none');
+		map.setLayoutProperty('gps-heatmap', 'visibility', 'visible');
+		//更新legend
+		var GPS_count = $('#GPS_count').val();
+		map.setPaintProperty('gps-heatmap', 'heatmap-weight', [
+                "interpolate",
+                ["linear"],
+                ["get", "point_count"],
+                0, 0,
+                parseInt(GPS_count), 1
+            ]);
+		$("#legend1").text(parseInt(GPS_count*0.2));
+		$("#legend2").text(parseInt(GPS_count*0.4));
+		$("#legend3").text(parseInt(GPS_count*0.6));
+		$("#legend4").text(parseInt(GPS_count*0.8));
+		$("#legend5").text(GPS_count);
+		$('#heatmap_legend_gps').show();
+	});
+	$("#button_heatmap_gps_hide").click(function(){
+		$('#heatmap_legend_gps').hide();
+		map.setLayoutProperty('gps-heatmap', 'visibility', 'none');
+	});
+		
+});
+
+
+//////////////////////////////////////////////////////////////////////
+//热图
+map.on('load',function(){
+	map.addSource("GPS_data_for_heatmap", {
+		type: "geojson",
+		data: points_geojson,
+		cluster: true,
+		clusterMaxZoom: 16, // Max zoom to cluster points on
+		clusterRadius: 15 // Use small cluster radius for the heatmap look
+	});
+    map.addLayer({
+        "id": "gps-heatmap",
+        "type": "heatmap",
+        "source": "GPS_data_for_heatmap",
+        "maxzoom": 16,
+		"layout":{
+			"visibility": "none"
+		},
+        "paint": {
+            // Increase the heatmap weight based on frequency and property magnitude
+            "heatmap-weight": [
+                "interpolate",
+                ["linear"],
+                ["get", "point_count"],
+                0, 0,
+                5, 1
+            ],
+            // Increase the heatmap color weight weight by zoom level
+            // heatmap-intensity is a multiplier on top of heatmap-weight
+            "heatmap-intensity": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                0, 1,
+                16, 3
+            ],
+            // Color ramp for heatmap.  Domain is 0 (low) to 1 (high).
+            // Begin color ramp at 0-stop with a 0-transparancy color
+            // to create a blur-like effect.
+            "heatmap-color": [
+                "interpolate",
+                ["linear"],
+                ["heatmap-density"],
+                0, "rgba(33,102,172,0)",
+                0.2, "rgb(103,169,207)",
+                0.4, "rgb(209,229,240)",
+                0.6, "rgb(253,219,199)",
+                0.8, "rgb(239,138,98)",
+                1, "rgb(178,24,43)"
+            ],
+            // Adjust the heatmap radius by zoom level
+            "heatmap-radius": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                0, 0,
+                16, 30
+            ],
+            // Transition from heatmap to circle layer by zoom level
+            "heatmap-opacity": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                13, 1,
+                20, 0
+            ],
+        },
+		"filter": ["==", "cluster", true]
+    }, 'waterway-label');
+    
+	map.setPaintProperty('gps-heatmap', 'heatmap-radius', parseInt(heatmap_radius.value));
+	heatmap_radius.addEventListener('input', function(e) {
+		span_heatmap_radius.textContent = e.target.value;
+		map.setPaintProperty('gps-heatmap', 'heatmap-radius', parseInt(e.target.value));
+	});
+	map.setPaintProperty('gps-heatmap', 'heatmap-opacity', parseInt(heatmap_opacity.value)/100);
+	heatmap_opacity.addEventListener('input', function(e) {
+		span_heatmap_opacity.textContent = e.target.value;
+		map.setPaintProperty('gps-heatmap', 'heatmap-opacity', parseInt(e.target.value)/100);
+	});
+	 
+});
+
+//range拖动改变heat map属性大小;定义值
+
+//////////////////////////////////////////////////////////////////////
+
+
+
+</script>
+
+</html>
