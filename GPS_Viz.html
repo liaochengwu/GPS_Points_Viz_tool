@@ -16,7 +16,7 @@
 	<link rel='stylesheet' href='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v2.3.0/mapbox-gl-geocoder.css' type='text/css' />
     <style>
         body{margin:0; padding:0;height:100%;}
-		#title{padding:0.5%;height:3%;boder:solid 0.5% #fcc;background-color:#363636;text-align:center;display:-webkit-box;-webkit-box-pack:center;-webkit-box-align:center;}
+		#title{padding:0.5%;height:3%;boder:solid 0.5% #fcc;background-color:#363636;display:-webkit-box;-webkit-box-pack:center;-webkit-box-align:center;}
 		#control{position:relative;float:left;width:300px;height:95%}
 		#map{position:relative;float;margin-left:300px;height:95%;border:solid 5px #D3D3D3;text-align:left;box-sizing: border-box;}
         #input_module{position:relative;float:left;width:100%;height:300px;border:solid 5px #D3D3D3;box-sizing: border-box;}
@@ -96,7 +96,8 @@
 
 
 <div id='title' >
-	<label class="title" style='font-size:20px;color:white;font-weight:bold;'>GPS点可视化工具</label>
+	<span style='font-size:20px;color:white;font-weight:bold;'>GPS点可视化工具</span>
+	<span style='font-size:15px;color:white;'>&nbsp;lcw@cqu.edu.cn</span>
 </div>
 
 <div id='control'>
@@ -437,30 +438,11 @@ map.on('load',function(){
 
 ////////////////////////////////////////////////////////////////////////////////////
 
-
-//alert(features[0].properties.is_nonWorkday);
-var geojson_head = "{\"type\": \"FeatureCollection\",\"features\": [";
-var geojson_tail = "]}";
-var geojson_body = "";
-
 //响应按钮
 $(document).ready(function(){
 	$("#button_point_show").click(function(){
-		//GPS点数据转化成geojson
-		var points_text = $("#input_points").val(); 
-		points_text = points_text.split("\n");
-
-		var point_lnglat = null;
-		for(var i = 0 ; i < points_text.length ; i ++){
-		    point_lnglat = points_text[i].split(",");
-			geojson_body = geojson_body + "{ \"type\": \"Feature\", \"geometry\": { \"type\": \"Point\", \"coordinates\": [ " + point_lnglat[0] + "," + point_lnglat[1] + "] } },"
-		}
-		map.flyTo({
-			center: [parseFloat(point_lnglat[0]), parseFloat(point_lnglat[1])],
-			zoom: 13
-		});
-		var points_geojson_str = geojson_head + geojson_body.substr(0, geojson_body.length - 1) + geojson_tail;
-		points_geojson = JSON.parse(points_geojson_str); 
+		geojson_str = getGeojson(13);
+		points_geojson = JSON.parse(geojson_str); 
 		
 		//更新source
 		map.getSource('GPS_data').setData(points_geojson);
@@ -471,23 +453,10 @@ $(document).ready(function(){
 	});
 	//heatmap_checkins
 	$("#button_heatmap_gps_show").click(function(){
-		if (!points_geojson){
-			//GPS点数据转化成geojson
-			var points_text = $("#input_points").val(); 
-			points_text = points_text.split("\n");
-
-			var point_lnglat = null;
-			for(var i = 0 ; i < points_text.length ; i ++){
-				point_lnglat = points_text[i].split(",");
-				geojson_body = geojson_body + "{ \"type\": \"Feature\", \"geometry\": { \"type\": \"Point\", \"coordinates\": [ " + point_lnglat[0] + "," + point_lnglat[1] + "] } },"
-			}
-			map.flyTo({
-				center: [parseFloat(point_lnglat[0]), parseFloat(point_lnglat[1])],
-				zoom: 13
-			});
-			var points_geojson_str = geojson_head + geojson_body.substr(0, geojson_body.length - 1) + geojson_tail;
-			points_geojson = JSON.parse(points_geojson_str); 
-		}
+		geojson_str = getGeojson(11);
+		points_geojson = JSON.parse(geojson_str);
+		
+		
 		//更新source
 		map.getSource('GPS_data_for_heatmap').setData(points_geojson);
 		map.setLayoutProperty('GPS_points_layer', 'visibility', 'none');
