@@ -253,7 +253,7 @@ map.on('load',function(){
 	});
 	map.on('click', 'bdsc_layer' , function (e) {
 		var coordinates = e.features[0].geometry.coordinates.slice();
-		var description = "<h3><strong>hello</strong></h3><h4><p>双击隐藏图片</p></h4>";
+		var description = "<h3><strong>BDSC-lab</strong></h3><h4><p>双击隐藏图片</p></h4>";
 		while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
 		coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
 		}
