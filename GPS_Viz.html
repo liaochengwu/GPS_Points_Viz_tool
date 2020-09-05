@@ -246,40 +246,37 @@ map.on('load',function(){
 				"interpolate",
 				["linear"],
 				["zoom"],
-					6, 0.01, //0.15
+					6, 0.02, //0.15
 					18, 0.5
 			]
 			}
 	});
 	map.on('click', 'bdsc_layer' , function (e) {
-		var coordinates = e.features[0].geometry.coordinates.slice();
-		var description = "<h3><strong>BDSC-lab</strong></h3><h4><p>双击隐藏图片</p></h4>";
-		while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
-		coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
-		}
-		 
 		
-		popup.setLngLat(coordinates)
-			.setHTML(description)
-			.addTo(map);
 	});
 	map.on('dblclick', 'bdsc_layer' , function (e) {
 		map.setLayoutProperty('bdsc_layer', 'visibility', 'none');
 		popup.remove();
 	});
 
-	//map.on('click', 'bdsc_layer', function() {
-	//	map.getCanvas().style.cursor = '';
-	//	popup.remove();
-	//});
 	// Change the cursor to a pointer when the mouse is over the places layer.
-	map.on('mouseenter', 'bdsc_layer', function() {
-	map.getCanvas().style.cursor = 'pointer';
+	map.on('mouseenter', 'bdsc_layer', function(e) {
+		map.getCanvas().style.cursor = 'pointer';
+		var coordinates = e.features[0].geometry.coordinates.slice();
+			var description = "<h3><strong>BDSC-lab</strong></h3><h4><p>双击隐藏图片</p></h4>";
+			while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+			coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+			}
+			 
+			popup.setLngLat(coordinates)
+				.setHTML(description)
+				.addTo(map);
 	});
 	 
 	// Change it back to a pointer when it leaves.
 	map.on('mouseleave', 'bdsc_layer', function() {
-	map.getCanvas().style.cursor = '';
+		map.getCanvas().style.cursor = '';
+		popup.remove();
 	});
 });
 //Infomations of mouse position
