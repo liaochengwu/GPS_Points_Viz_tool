@@ -330,7 +330,7 @@ map.on('load', function() {
 		source: 'geojson',
 		paint: {
 			'circle-radius': 5,
-			'circle-color': '#000'
+			'circle-color': '#FF0000'
 		},
 		filter: ['in', '$type', 'Point']
 	});
@@ -343,7 +343,7 @@ map.on('load', function() {
 			'line-join': 'round'
 		},
 		paint: {
-			'line-color': '#000',
+			'line-color': '#FF0000',
 			'line-width': 2.5
 		},
 		filter: ['in', '$type', 'LineString']
@@ -412,6 +412,9 @@ if($('#distance_measure').is(':checked')){
 // map显示GPS点
 var points_geojson = null;
 map.on('load',function(){
+	map.loadImage('https://liaochengwu.github.io/test/images/icons/circle.png', function(error, image2) {
+	if (error) throw error;
+	map.addImage('circle',image2);});
 	map.addSource("GPS_data",{
 		'type':'geojson',
 		'data': points_geojson
@@ -422,7 +425,7 @@ map.on('load',function(){
 		"source": "GPS_data",
 		"layout": {
 			"visibility": 'visible',
-			"icon-image": "circle-15",
+			"icon-image": "circle",
 			"icon-size": [
 				"interpolate",
 				["linear"],
